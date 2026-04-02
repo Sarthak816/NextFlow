@@ -8,8 +8,8 @@ import Image from "next/image";
 import { useUppy, FileInput } from "@uppy/react";
 import Uppy from "@uppy/core";
 import Transloadit from "@uppy/transloadit";
-import "@uppy/core/css/style.min.css";
-import "@uppy/file-input/css/style.min.css";
+import "@uppy/core/css/style.css";
+import "@uppy/file-input/dist/style.css";
 
 export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);

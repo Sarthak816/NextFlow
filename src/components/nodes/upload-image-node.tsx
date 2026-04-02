@@ -5,19 +5,36 @@ import { NodeWrapper } from "./node-wrapper";
 import { useWorkflowStore, type AppNode } from "@/store/workflow-store";
 import Image from "next/image";
 
+import { useUppy, FileInput } from "@uppy/react";
+import Uppy from "@uppy/core";
+import Transloadit from "@uppy/transloadit";
+import "@uppy/core/dist/style.min.css";
+import "@uppy/file-input/dist/style.min.css";
+
 export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
-  const [isUploading, setIsUploading] = useState(false);
 
-  // Note: we will integrate real Transloadit Uppy logic here later.
-  // For now we mock the UI upload behavior.
-  const handleUploadClick = () => {
-    setIsUploading(true);
-    setTimeout(() => {
-      updateNodeData(id, { imageUrl: "https://picsum.photos/400/300" });
-      setIsUploading(false);
-    }, 1500); // simulate upload
-  };
+  const uppy = useUppy(() => {
+    const u = new Uppy({
+      id: `img-${id}`,
+      autoProceed: true,
+      restrictions: { maxNumberOfFiles: 1, allowedFileTypes: ["image/*"] },
+    }).use(Transloadit, {
+      waitForResults: true,
+      params: {
+        auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
+        template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_IMAGE,
+      },
+    });
+
+    u.on("transloadit:result", (stepName, result) => {
+      if (result.ssl_url) {
+        updateNodeData(id, { imageUrl: result.ssl_url });
+      }
+    });
+
+    return u;
+  });
 
   return (
     <NodeWrapper
@@ -44,22 +61,13 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
             </button>
           </div>
         ) : (
-          <button
-            onClick={handleUploadClick}
-            disabled={isUploading}
-            className="w-full h-32 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#444] rounded-lg bg-[#111] hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
-          >
-            {isUploading ? (
-              <span className="text-sm text-gray-400 animate-pulse">Uploading...</span>
-            ) : (
-              <>
-                <UploadCloud className="w-6 h-6 text-gray-500" />
-                <span className="text-xs text-gray-400 max-w-[150px] text-center">
-                  Click to upload JPG, PNG, WEBP
-                </span>
-              </>
-            )}
-          </button>
+          <label className="w-full h-32 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#444] rounded-lg bg-[#111] hover:bg-[#1a1a1a] transition-colors cursor-pointer group">
+            <UploadCloud className="w-6 h-6 text-gray-500 group-hover:text-indigo-400 transition-colors" />
+            <span className="text-xs text-gray-400 max-w-[150px] text-center group-hover:text-gray-300">
+              Click to upload JPG, PNG, WEBP
+            </span>
+            <FileInput uppy={uppy} className="hidden" />
+          </label>
         )}
         <Handle
           type="source"

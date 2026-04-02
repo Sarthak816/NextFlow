@@ -29,6 +29,8 @@ interface WorkflowState {
   executionStatus: Record<string, string>; // nodeId -> status
   undoStack: { nodes: AppNode[]; edges: Edge[] }[];
   redoStack: { nodes: AppNode[]; edges: Edge[] }[];
+  id: string | null;
+  name: string;
 }
 
 interface WorkflowActions {
@@ -41,9 +43,12 @@ interface WorkflowActions {
   updateNodeData: (nodeId: string, data: Partial<WorkflowNodeData>) => void;
   setExecutionStatus: (nodeId: string, status: string) => void;
   clearExecutionStatus: () => void;
-  undo: () => void;
   redo: () => void;
   saveStateToHistory: () => void;
+  exportWorkflow: () => void;
+  importWorkflow: (json: string) => void;
+  setMetadata: (id: string | null, name: string) => void;
+  loadRunResults: (runId: string) => Promise<void>;
 }
 
 export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
@@ -54,6 +59,8 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
     executionStatus: {},
     undoStack: [],
     redoStack: [],
+    id: null,
+    name: "New Workflow",
 
     onNodesChange: (changes) => {
       set((state) => {
@@ -152,5 +159,51 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
         state.edges = nextState.edges;
       });
     },
+    exportWorkflow: () => {
+      const { nodes, edges } = get();
+      const workflow = { nodes, edges };
+      const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `workflow-${Date.now()}.json`;
+      link.click();
+    },
+    importWorkflow: (json) => {
+      try {
+        const { nodes, edges } = JSON.parse(json);
+        get().saveStateToHistory();
+        set((state) => {
+          state.nodes = nodes;
+          state.edges = edges;
+        });
+      } catch (e) {
+        console.error("Failed to import workflow", e);
+      }
+    },
+    setMetadata: (id, name) => {
+      set((state) => {
+        state.id = id;
+        state.name = name;
+      });
+    },
+    loadRunResults: async (runId) => {
+      try {
+        const res = await fetch(`/api/workflows/runs/${runId}`);
+        if (!res.ok) return;
+        const run = await res.json();
+        
+        set((state) => {
+          run.nodeExecutions.forEach((exec: any) => {
+            const node = state.nodes.find(n => n.id === exec.nodeId);
+            if (node) {
+              node.data = { ...node.data, output: exec.output };
+            }
+          });
+        });
+      } catch (err) {
+        console.error("Load results failed", err);
+      }
+    }
   }))
 );

@@ -4,18 +4,36 @@ import { Video as VideoIcon, UploadCloud } from "lucide-react";
 import { NodeWrapper } from "./node-wrapper";
 import { useWorkflowStore, type AppNode } from "@/store/workflow-store";
 
+import { useUppy, FileInput } from "@uppy/react";
+import Uppy from "@uppy/core";
+import Transloadit from "@uppy/transloadit";
+import "@uppy/core/dist/style.min.css";
+import "@uppy/file-input/dist/style.min.css";
+
 export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
-  const [isUploading, setIsUploading] = useState(false);
 
-  // Mock upload logic
-  const handleUploadClick = () => {
-    setIsUploading(true);
-    setTimeout(() => {
-      updateNodeData(id, { videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" });
-      setIsUploading(false);
-    }, 2000); // simulate upload
-  };
+  const uppy = useUppy(() => {
+    const u = new Uppy({
+      id: `vid-${id}`,
+      autoProceed: true,
+      restrictions: { maxNumberOfFiles: 1, allowedFileTypes: ["video/*"] },
+    }).use(Transloadit, {
+      waitForResults: true,
+      params: {
+        auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
+        template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_VIDEO,
+      },
+    });
+
+    u.on("transloadit:result", (stepName, result) => {
+      if (result.ssl_url) {
+        updateNodeData(id, { videoUrl: result.ssl_url });
+      }
+    });
+
+    return u;
+  });
 
   return (
     <NodeWrapper
@@ -41,22 +59,13 @@ export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>)
             </button>
           </div>
         ) : (
-          <button
-            onClick={handleUploadClick}
-            disabled={isUploading}
-            className="w-full aspect-video flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#444] rounded-lg bg-[#111] hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
-          >
-            {isUploading ? (
-              <span className="text-sm text-gray-400 animate-pulse">Uploading...</span>
-            ) : (
-              <>
-                <UploadCloud className="w-6 h-6 text-gray-500" />
-                <span className="text-xs text-gray-400 max-w-[150px] text-center">
-                  Click to upload MP4, MOV, WEBM
-                </span>
-              </>
-            )}
-          </button>
+          <label className="w-full aspect-video flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#444] rounded-lg bg-[#111] hover:bg-[#1a1a1a] transition-colors cursor-pointer group">
+            <UploadCloud className="w-6 h-6 text-gray-500 group-hover:text-indigo-400 transition-colors" />
+            <span className="text-xs text-gray-400 max-w-[150px] text-center group-hover:text-gray-300">
+              Click to upload MP4, MOV, WEBM
+            </span>
+            <FileInput uppy={uppy} className="hidden" />
+          </label>
         )}
         <Handle
           type="source"

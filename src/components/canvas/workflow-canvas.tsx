@@ -38,8 +38,30 @@ export function WorkflowCanvas() {
     onEdgesChange,
     onConnect,
     setExecutionStatus,
-    clearExecutionStatus
+    clearExecutionStatus,
+    exportWorkflow,
+    importWorkflow,
+    name,
+    setMetadata,
   } = useWorkflowStore();
+
+  const handleSave = async () => {
+    try {
+      const response = await fetch("/api/workflows", {
+        method: "POST",
+        body: JSON.stringify({ name, nodes, edges }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMetadata(data.id, data.name);
+        alert("Workflow saved successfully!");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save workflow");
+    }
+  };
 
   const handleRun = async () => {
     clearExecutionStatus();
@@ -85,13 +107,53 @@ export function WorkflowCanvas() {
           className="bg-[#111] border border-[#222]" 
         />
         
-        <Panel position="top-right" className="bg-[#111] border border-[#333] rounded-md p-2 shadow-lg">
+        <Panel position="top-right" className="bg-[#111] border border-[#333] rounded-md p-2 shadow-lg flex gap-2 overflow-hidden">
+           <div className="flex flex-col justify-center px-2 border-r border-[#333]">
+              <input 
+                value={name}
+                onChange={(e) => setMetadata(null, e.target.value)}
+                className="bg-transparent text-xs text-gray-200 border-none outline-none w-32"
+                placeholder="Workflow name"
+              />
+           </div>
            <button 
              onClick={handleRun}
              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-1.5 rounded-full font-medium transition-colors"
            >
               Run Workflow
            </button>
+           <button 
+             onClick={handleSave}
+             className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1.5 rounded-full font-medium transition-colors"
+           >
+              Save
+           </button>
+           <div className="w-[1px] bg-[#333] mx-1 h-8 self-center" />
+           <button
+             onClick={exportWorkflow}
+             className="bg-[#222] hover:bg-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-md transition-colors"
+           >
+             Export JSON
+           </button>
+           <label className="bg-[#222] hover:bg-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-md transition-colors cursor-pointer inline-block">
+             Import JSON
+             <input
+               type="file"
+               className="hidden"
+               accept=".json"
+               onChange={(e) => {
+                 const file = e.target.files?.[0];
+                 if (file) {
+                   const reader = new FileReader();
+                   reader.onload = (re) => {
+                     const json = re.target?.result as string;
+                     importWorkflow(json);
+                   };
+                   reader.readAsText(file);
+                 }
+               }}
+             />
+           </label>
         </Panel>
       </ReactFlow>
     </div>

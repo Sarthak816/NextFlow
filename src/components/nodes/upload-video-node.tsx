@@ -7,8 +7,8 @@ import { useWorkflowStore, type AppNode } from "@/store/workflow-store";
 import { useUppy, FileInput } from "@uppy/react";
 import Uppy from "@uppy/core";
 import Transloadit from "@uppy/transloadit";
-import "@uppy/core/dist/style.min.css";
-import "@uppy/file-input/dist/style.min.css";
+import "@uppy/core/css/style.min.css";
+import "@uppy/file-input/css/style.min.css";
 
 export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
@@ -19,7 +19,6 @@ export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>)
       autoProceed: true,
       restrictions: { maxNumberOfFiles: 1, allowedFileTypes: ["video/*"] },
     }).use(Transloadit, {
-      waitForResults: true,
       params: {
         auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
         template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_VIDEO,

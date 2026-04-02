@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workflow {
+  id        String        @id @default(cuid())
+  userId    String
+  name      String        @default("Untitled Workflow")
+  data      Json
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  runs      WorkflowRun[]
+
+  @@index([userId])
+}
+
+model WorkflowRun {
+  id             String          @id @default(cuid())
+  workflowId     String
+  workflow       Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  userId         String
+  status         RunStatus       @default(PENDING)
+  triggeredBy    TriggerType     @default(FULL)
+  nodeIds        String[]
+  startedAt      DateTime        @default(now())
+  completedAt    DateTime?
+  nodeExecutions NodeExecution[]
+
+  @@index([workflowId])
+  @@index([userId])
+}
+
+model NodeExecution {
+  id          String          @id @default(cuid())
+  runId       String
+  run         WorkflowRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  nodeId      String
+  nodeType    String
+  nodeLabel   String          @default("")
+  status      ExecutionStatus @default(PENDING)
+  input       Json?
+  output      Json?
+  error       String?
+  durationMs  Float?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@index([runId])
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum TriggerType {
+  FULL
+  SELECTION
+  SINGLE
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}

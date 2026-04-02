@@ -12,7 +12,10 @@ interface NodeWrapperProps {
   selected?: boolean;
   children: ReactNode;
   className?: string;
+  onRun?: () => void;
 }
+
+import { Play } from "lucide-react";
 
 export function NodeWrapper({
   id,
@@ -22,6 +25,7 @@ export function NodeWrapper({
   selected,
   children,
   className,
+  onRun,
 }: NodeWrapperProps) {
   const isRunning = useWorkflowStore(state => state.executionStatus[id] === "RUNNING");
 
@@ -38,7 +42,19 @@ export function NodeWrapper({
         <div className={cn("p-1.5 rounded-md bg-[#111]", iconColor)}>
           <Icon className="w-3.5 h-3.5" />
         </div>
-        <div className="font-medium text-sm text-gray-200">{title}</div>
+        <div className="font-medium text-sm text-gray-200 flex-1">{title}</div>
+        {onRun && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onRun();
+            }}
+            title="Run Node"
+            className="p-1 hover:bg-[#333] rounded-md transition-colors text-gray-400 hover:text-green-400 ml-auto"
+          >
+            <Play className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <div className="p-4 relative">
         {children}

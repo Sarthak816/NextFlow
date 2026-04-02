@@ -1,11 +1,10 @@
-import { memo, useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Image as ImageIcon, UploadCloud } from "lucide-react";
 import { NodeWrapper } from "./node-wrapper";
 import { useWorkflowStore, type AppNode } from "@/store/workflow-store";
 import Image from "next/image";
 
-import { useUppy, FileInput } from "@uppy/react";
 import Uppy from "@uppy/core";
 import Transloadit from "@uppy/transloadit";
 import "@uppy/core/css/style.css";
@@ -14,7 +13,7 @@ import "@uppy/file-input/dist/style.css";
 export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
 
-  const uppy = useUppy(() => {
+  const uppy = useMemo(() => {
     const u = new Uppy({
       id: `img-${id}`,
       autoProceed: true,
@@ -33,7 +32,7 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
     });
 
     return u;
-  });
+  }, [id, updateNodeData]);
 
   return (
     <NodeWrapper
@@ -65,7 +64,22 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
             <span className="text-xs text-gray-400 max-w-[150px] text-center group-hover:text-gray-300">
               Click to upload JPG, PNG, WEBP
             </span>
-            <FileInput uppy={uppy} className="hidden" />
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  uppy.addFile({
+                    name: file.name,
+                    type: file.type,
+                    data: file,
+                    source: "Local",
+                  });
+                }
+              }}
+            />
           </label>
         )}
         <Handle

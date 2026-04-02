@@ -1,10 +1,9 @@
-import { memo, useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Video as VideoIcon, UploadCloud } from "lucide-react";
 import { NodeWrapper } from "./node-wrapper";
 import { useWorkflowStore, type AppNode } from "@/store/workflow-store";
 
-import { useUppy, FileInput } from "@uppy/react";
 import Uppy from "@uppy/core";
 import Transloadit from "@uppy/transloadit";
 import "@uppy/core/css/style.css";
@@ -13,7 +12,7 @@ import "@uppy/file-input/dist/style.css";
 export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
 
-  const uppy = useUppy(() => {
+  const uppy = useMemo(() => {
     const u = new Uppy({
       id: `vid-${id}`,
       autoProceed: true,
@@ -32,7 +31,7 @@ export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>)
     });
 
     return u;
-  });
+  }, [id, updateNodeData]);
 
   return (
     <NodeWrapper
@@ -63,7 +62,22 @@ export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>)
             <span className="text-xs text-gray-400 max-w-[150px] text-center group-hover:text-gray-300">
               Click to upload MP4, MOV, WEBM
             </span>
-            <FileInput uppy={uppy} className="hidden" />
+            <input
+              type="file"
+              className="hidden"
+              accept="video/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  uppy.addFile({
+                    name: file.name,
+                    type: file.type,
+                    data: file,
+                    source: "Local",
+                  });
+                }
+              }}
+            />
           </label>
         )}
         <Handle

@@ -17,6 +17,7 @@
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.1",
     "@uppy/file-input": "^4.2.2",
+    "@uppy/react": "^5.2.0",
     "@uppy/transloadit": "^5.5.1",
     "@uppy/xhr-upload": "^5.2.0",
     "@xyflow/react": "^12.10.2",

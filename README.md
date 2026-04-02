@@ -2,7 +2,7 @@
 
 NextFlow is a production-grade visual canvas for orchestrating complex LLM and media processing workflows. Built with **React Flow**, **Next.js 15**, and **Trigger.dev**, it mirrors the sophisticated dark aesthetic and parallel execution core of Krea.ai.
 
-## 🚀 Key Features
+##  Key Features
 
 - **Pixel-Perfect Canvas**: Sleek dark-mode interface with glassmorphic nodes, animated edges, and real-time execution glow effects.
 - **Advanced Node Library**:
@@ -22,7 +22,7 @@ NextFlow is a production-grade visual canvas for orchestrating complex LLM and m
   - **Database Persistence**: Persistent workflow state and run history using Prisma and Neon PostgreSQL.
   - **Background Jobs**: Heavy lifting (AI calls, media processing) handled asynchronously by Trigger.dev.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Framework**: Next.js 15
 - **Visuals**: @xyflow/react (React Flow), Tailwind CSS 4, Lucide React
@@ -31,7 +31,7 @@ NextFlow is a production-grade visual canvas for orchestrating complex LLM and m
 - **Database**: Prisma + Neon (PostgreSQL)
 - **Tasks**: Trigger.dev v3
 
-## 🚦 Getting Started
+##  Getting Started
 
 1. **Clone the repository**:
    ```bash

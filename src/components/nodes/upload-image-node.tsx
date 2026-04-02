@@ -20,7 +20,6 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
       autoProceed: true,
       restrictions: { maxNumberOfFiles: 1, allowedFileTypes: ["image/*"] },
     }).use(Transloadit, {
-      waitForResults: true,
       params: {
         auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
         template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_IMAGE,

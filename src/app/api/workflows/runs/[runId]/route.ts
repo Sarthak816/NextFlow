@@ -4,14 +4,15 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  { params }: { params: { runId: string } }
+  { params }: { params: Promise<{ runId: string }> }
 ) {
   try {
+    const { runId } = await params;
     const { userId } = await auth();
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
     const run = await db.workflowRun.findUnique({
-      where: { id: params.runId },
+      where: { id: runId },
       include: {
         nodeExecutions: true,
       },

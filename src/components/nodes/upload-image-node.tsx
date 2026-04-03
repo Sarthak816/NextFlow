@@ -19,15 +19,17 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
       autoProceed: true,
       restrictions: { maxNumberOfFiles: 1, allowedFileTypes: ["image/*"] },
     }).use(Transloadit, {
-      params: {
-        auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
-        template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_IMAGE,
+      assemblyOptions: {
+        params: {
+          auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY || "" },
+          template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_IMAGE || "",
+        },
       },
     });
 
     u.on("transloadit:result", (stepName, result) => {
       if (result.ssl_url) {
-        updateNodeData(id, { imageUrl: result.ssl_url });
+        updateNodeData(id, { imageUrl: result.ssl_url } as any);
       }
     });
 
@@ -46,13 +48,13 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
         {data.imageUrl ? (
           <div className="relative w-full h-32 rounded-lg bg-[#111] overflow-hidden border border-[#333]">
             <Image
-              src={data.imageUrl}
+              src={data.imageUrl as string}
               alt="Uploaded Preview"
               fill
               className="object-cover"
             />
             <button 
-              onClick={() => updateNodeData(id, { imageUrl: null })}
+              onClick={() => updateNodeData(id, { imageUrl: null } as any)}
               className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 text-xs hover:bg-black/80"
             >
               ✕

@@ -18,15 +18,17 @@ export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>)
       autoProceed: true,
       restrictions: { maxNumberOfFiles: 1, allowedFileTypes: ["video/*"] },
     }).use(Transloadit, {
-      params: {
-        auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
-        template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_VIDEO,
+      assemblyOptions: {
+        params: {
+          auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY || "" },
+          template_id: process.env.NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID_VIDEO || "",
+        },
       },
     });
 
     u.on("transloadit:result", (stepName, result) => {
       if (result.ssl_url) {
-        updateNodeData(id, { videoUrl: result.ssl_url });
+        updateNodeData(id, { videoUrl: result.ssl_url } as any);
       }
     });
 
@@ -45,12 +47,12 @@ export const UploadVideoNode = memo(({ id, data, selected }: NodeProps<AppNode>)
         {data.videoUrl ? (
           <div className="relative w-full aspect-video rounded-lg bg-[#111] overflow-hidden border border-[#333]">
             <video 
-              src={data.videoUrl} 
+              src={data.videoUrl as string} 
               controls 
               className="w-full h-full object-cover" 
             />
             <button 
-              onClick={() => updateNodeData(id, { videoUrl: null })}
+              onClick={() => updateNodeData(id, { videoUrl: null } as any)}
               className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 text-xs hover:bg-black/80 z-10"
             >
               ✕

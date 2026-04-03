@@ -28,13 +28,13 @@ export function useTransloaditUploader({ templateId, onSuccess, allowedFileTypes
   }, [templateId, allowedFileTypes]);
 
   useEffect(() => {
-    uppy.on('transloadit:result', (stepName, result) => {
+    (uppy as any).on('transloadit:result', (stepName: string, result: any) => {
       if (result.ssl_url) {
         onSuccess(result.ssl_url);
       }
     });
 
-    return () => uppy.close();
+    return () => uppy.destroy();
   }, [uppy, onSuccess]);
 
   return uppy;

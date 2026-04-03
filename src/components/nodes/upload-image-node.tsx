@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, memo, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Image as ImageIcon, UploadCloud } from "lucide-react";
 import { NodeWrapper } from "./node-wrapper";
@@ -35,6 +35,10 @@ export const UploadImageNode = memo(({ id, data, selected }: NodeProps<AppNode>)
 
     return u;
   }, [id, updateNodeData]);
+
+  useEffect(() => {
+    return () => uppy.destroy();
+  }, [uppy]);
 
   return (
     <NodeWrapper

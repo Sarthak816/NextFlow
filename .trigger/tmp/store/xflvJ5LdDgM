@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../trigger.config.ts"],
+  "sourcesContent": ["import { defineConfig } from \"@trigger.dev/sdk/v3\";\n\nexport default defineConfig({\n  project: \"proj_seipkhltguwpruvozzoi\",\n  runtime: \"node\",\n  logLevel: \"log\",\n  maxDuration: 300,\n\n  // Ensure this points to the folder where our tasks are\n  dirs: [\"./src/trigger\"],\n\n  build: {},\n});\nexport const resolveEnvVars = undefined;"],
+  "mappings": ";;;;;;;;;AAAA;AAEA,IAAO,yBAAQ,aAAa;AAAA,EAC1B,SAAS;AAAA,EACT,SAAS;AAAA,EACT,UAAU;AAAA,EACV,aAAa;AAAA;AAAA,EAGb,MAAM,CAAC,eAAe;AAAA,EAEtB,OAAO,CAAC;AACV,CAAC;AACM,IAAM,iBAAiB;",
+  "names": []
+}

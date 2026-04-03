@@ -1,0 +1,21 @@
+{
+  "configPath": "D:\\projects\\NextFlow\\.trigger\\tmp\\build-rXKYPX\\trigger.config.mjs",
+  "customConditions": [
+  ],
+  "queues": [
+  ],
+  "runtime": "node",
+  "runtimeVersion": "22.18.0",
+  "tasks": [
+    {
+      "entryPoint": "D:\\projects\\NextFlow\\.trigger\\tmp\\build-rXKYPX\\workflow-runner.mjs",
+      "filePath": "src/trigger/workflow-runner.ts",
+      "id": "workflow-runner",
+      "maxDuration": 300
+    }
+  ],
+  "timings": {
+    "src/trigger/workflow-runner.ts": 47.49720000000002
+  },
+  "workerEntryPoint": "D:\\projects\\NextFlow\\.trigger\\tmp\\build-rXKYPX\\dev-run-worker.mjs"
+}

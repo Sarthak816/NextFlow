@@ -1,9 +1,6 @@
-"use client";
-
+import { useMemo, useEffect } from 'react';
 import Uppy from '@uppy/core';
 import Transloadit from '@uppy/transloadit';
-import { useUppy } from '@uppy/react';
-import { useEffect } from 'react';
 
 interface UploaderProps {
   templateId: string;
@@ -12,7 +9,7 @@ interface UploaderProps {
 }
 
 export function useTransloaditUploader({ templateId, onSuccess, allowedFileTypes }: UploaderProps) {
-  const uppy = useUppy(() => {
+  const uppy = useMemo(() => {
     return new Uppy({
       id: `${templateId}-uploader`,
       autoProceed: true,
@@ -21,13 +18,14 @@ export function useTransloaditUploader({ templateId, onSuccess, allowedFileTypes
         allowedFileTypes: allowedFileTypes || ['image/*']
       }
     }).use(Transloadit, {
-      waitForResults: true,
-      params: {
-        auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
-        template_id: templateId,
+      assemblyOptions: {
+        params: {
+          auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY || "" },
+          template_id: templateId,
+        },
       },
     });
-  });
+  }, [templateId, allowedFileTypes]);
 
   useEffect(() => {
     uppy.on('transloadit:result', (stepName, result) => {

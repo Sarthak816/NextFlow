@@ -3,8 +3,9 @@
 NextFlow is a production-grade visual canvas for orchestrating complex LLM and media processing workflows. Built with **React Flow**, **Next.js 15**, and **Trigger.dev**, it mirrors the sophisticated dark aesthetic and parallel execution core of Krea.ai.
 
 ## Live Demo
-**[NextFlow](https://velync-ai.pages.dev](https://nextflow-roan.vercel.app/))** 
+**[NextFlow](https://nextflow-roan.vercel.app/)** 
 
+## Watch Wakthrough here: https://www.loom.com/share/95e2957c3d3d4cd899ca4516dcd40d05
 
 ##  Key Features
 

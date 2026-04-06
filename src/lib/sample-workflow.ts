@@ -6,7 +6,7 @@ export const SAMPLE_NODES: AppNode[] = [
     id: "upload-image-1",
     type: "uploadImageNode",
     position: { x: 100, y: 100 },
-    data: { label: "Upload Product Image", imageUrl: "https://picsum.photos/seed/headphones/400/300" },
+    data: { label: "Upload Product Image" },
   },
   {
     id: "crop-image-1",
@@ -36,7 +36,7 @@ export const SAMPLE_NODES: AppNode[] = [
     id: "upload-video-1",
     type: "uploadVideoNode",
     position: { x: 100, y: 750 },
-    data: { label: "Upload Demo Video", videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
+    data: { label: "Upload Demo Video" },
   },
   {
     id: "extract-frame-1",

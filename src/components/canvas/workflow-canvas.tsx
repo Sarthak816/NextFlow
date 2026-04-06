@@ -70,32 +70,32 @@ export function WorkflowCanvas() {
       if (response.ok) {
         const data = await response.json();
         setMetadata(data.id, data.name);
-        alert("Workflow saved successfully!");
+        return data.id;
       }
     } catch (e) {
       console.error(e);
       alert("Failed to save workflow");
     }
+    return null;
   };
 
   const handleRun = async () => {
-    if (!id) {
-       await handleSave();
+    let currentId = id;
+    if (!currentId) {
+       currentId = await handleSave();
+       if (!currentId) return; // Error handled in handleSave
     }
     
     // Auto-toggle to hide sidebars on run to maximize canvas
     if (leftSidebarOpen) toggleLeftSidebar();
     if (rightSidebarOpen) toggleRightSidebar();
 
-    const currentWorkflowId = useWorkflowStore.getState().id;
-    if (!currentWorkflowId) return alert("Please save the workflow first.");
-
     clearExecutionStatus();
     
     try {
       const res = await fetch("/api/execute", {
         method: "POST",
-        body: JSON.stringify({ workflowId: currentWorkflowId }),
+        body: JSON.stringify({ workflowId: currentId }),
         headers: { "Content-Type": "application/json" },
       });
       
@@ -104,6 +104,7 @@ export function WorkflowCanvas() {
 
       const poll = async () => {
         const runRes = await fetch(`/api/workflows/runs/${runId}`);
+        if (!runRes.ok) return false;
         const runData = await runRes.json();
 
         runData.nodeExecutions?.forEach((exec: any) => {
@@ -124,10 +125,7 @@ export function WorkflowCanvas() {
           }
         });
 
-        if (runData.status === "COMPLETED" || runData.status === "FAILED") {
-          return true;
-        }
-        return false;
+        return runData.status === "COMPLETED" || runData.status === "FAILED";
       };
 
       const interval = setInterval(async () => {
@@ -141,6 +139,11 @@ export function WorkflowCanvas() {
     }
   };
 
+  const handlePaneClick = useCallback(() => {
+    if (leftSidebarOpen) toggleLeftSidebar();
+    if (rightSidebarOpen) toggleRightSidebar();
+  }, [leftSidebarOpen, rightSidebarOpen, toggleLeftSidebar, toggleRightSidebar]);
+
   return (
     <div className="flex-1 h-full w-full relative">
       <ReactFlow
@@ -149,6 +152,7 @@ export function WorkflowCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         fitView
         colorMode="dark"
@@ -165,6 +169,7 @@ export function WorkflowCanvas() {
            <button 
              onClick={toggleLeftSidebar}
              className="bg-[#111] border border-[#333] p-2 rounded-md hover:bg-[#222] text-gray-400 transition-colors"
+             title="Toggle History"
            >
               {leftSidebarOpen ? <PanelLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
            </button>
@@ -202,6 +207,7 @@ export function WorkflowCanvas() {
            <button 
              onClick={toggleRightSidebar}
              className="bg-[#111] border border-[#333] p-1.5 rounded-md hover:bg-[#222] text-gray-400"
+             title="Toggle Gallery"
            >
               {rightSidebarOpen ? <PanelRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
            </button>

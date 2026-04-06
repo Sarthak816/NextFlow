@@ -11,13 +11,11 @@ import {
   addEdge,
 } from "@xyflow/react";
 import { hasCycle } from "@/lib/dag-utils";
-import { type HandleDataType, isCompatible } from "@/lib/handle-types";
 import { SAMPLE_NODES, SAMPLE_EDGES } from "@/lib/sample-workflow";
 
-// We store node-specific data here.
 export type WorkflowNodeData = {
   label: string;
-  [key: string]: any; // Allow arbitrary data payload 
+  [key: string]: any; 
 };
 
 export type AppNode = Node<WorkflowNodeData>;
@@ -26,13 +24,13 @@ interface WorkflowState {
   nodes: AppNode[];
   edges: Edge[];
   selectedNodes: string[];
-  executionStatus: Record<string, string>; // nodeId -> status
+  executionStatus: Record<string, string>; 
   undoStack: { nodes: AppNode[]; edges: Edge[] }[];
   redoStack: { nodes: AppNode[]; edges: Edge[] }[];
   id: string | null;
   name: string;
-  leftSidebarOpen: boolean;
-  rightSidebarOpen: boolean;
+  leftSidebarCollapsed: boolean;
+  rightSidebarCollapsed: boolean;
 }
 
 interface WorkflowActions {
@@ -52,8 +50,8 @@ interface WorkflowActions {
   importWorkflow: (json: string) => void;
   setMetadata: (id: string | null, name: string) => void;
   loadRunResults: (runId: string) => Promise<void>;
-  toggleLeftSidebar: () => void;
-  toggleRightSidebar: () => void;
+  toggleLeftSidebar: (collapsed?: boolean) => void;
+  toggleRightSidebar: (collapsed?: boolean) => void;
 }
 
 export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
@@ -66,8 +64,8 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
     redoStack: [],
     id: null,
     name: "New Workflow",
-    leftSidebarOpen: true,
-    rightSidebarOpen: true,
+    leftSidebarCollapsed: false,
+    rightSidebarCollapsed: false,
 
     onNodesChange: (changes) => {
       set((state) => {
@@ -82,17 +80,9 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
     onConnect: (connection) => {
       const { source, target, sourceHandle, targetHandle } = connection;
       if (!source || !target || !sourceHandle || !targetHandle) return;
-
-      const sourceNode = get().nodes.find(n => n.id === source);
-      const targetNode = get().nodes.find(n => n.id === target);
-
-      if (!sourceNode || !targetNode) return;
       
       const newEdges = addEdge({ ...connection, animated: true, className: "stroke-indigo-500" }, get().edges);
-
-      if (hasCycle(get().nodes, newEdges)) {
-        return; 
-      }
+      if (hasCycle(get().nodes, newEdges)) return;
 
       get().saveStateToHistory();
       set((state) => {
@@ -159,12 +149,10 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
       });
     },
     exportWorkflow: () => {
-      const { nodes, edges } = get();
-      const workflow = { nodes, edges };
+      const workflow = { nodes: get().nodes, edges: get().edges };
       const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = URL.createObjectURL(blob);
       link.download = `workflow-${Date.now()}.json`;
       link.click();
     },
@@ -213,7 +201,11 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
         console.error("Load results failed", err);
       }
     },
-    toggleLeftSidebar: () => set((state) => { state.leftSidebarOpen = !state.leftSidebarOpen; }),
-    toggleRightSidebar: () => set((state) => { state.rightSidebarOpen = !state.rightSidebarOpen; }),
+    toggleLeftSidebar: (collapsed) => set((state) => { 
+        state.leftSidebarCollapsed = collapsed !== undefined ? collapsed : !state.leftSidebarCollapsed;
+    }),
+    toggleRightSidebar: (collapsed) => set((state) => { 
+        state.rightSidebarCollapsed = collapsed !== undefined ? collapsed : !state.rightSidebarCollapsed;
+    }),
   }))
 );

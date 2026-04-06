@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -20,7 +20,7 @@ import {
   Play, 
   Save, 
   Download, 
-  Upload 
+  Loader2 
 } from "lucide-react";
 
 import { TextNode } from "@/components/nodes/text-node";
@@ -54,11 +54,13 @@ export function WorkflowCanvas() {
     importWorkflow,
     name,
     setMetadata,
-    leftSidebarOpen,
-    rightSidebarOpen,
+    leftSidebarCollapsed,
+    rightSidebarCollapsed,
     toggleLeftSidebar,
     toggleRightSidebar,
   } = useWorkflowStore();
+
+  const [isRunning, setIsRunning] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -80,15 +82,19 @@ export function WorkflowCanvas() {
   };
 
   const handleRun = async () => {
-    let currentId = id;
+    if (isRunning) return;
+    
+    let currentId = useWorkflowStore.getState().id;
     if (!currentId) {
        currentId = await handleSave();
-       if (!currentId) return; // Error handled in handleSave
+       if (!currentId) return; 
     }
     
-    // Auto-toggle to hide sidebars on run to maximize canvas
-    if (leftSidebarOpen) toggleLeftSidebar();
-    if (rightSidebarOpen) toggleRightSidebar();
+    setIsRunning(true);
+    
+    // Auto-collapse sidebars on run to maximize building area
+    toggleLeftSidebar(true);
+    toggleRightSidebar(true);
 
     clearExecutionStatus();
     
@@ -125,24 +131,27 @@ export function WorkflowCanvas() {
           }
         });
 
-        return runData.status === "COMPLETED" || runData.status === "FAILED";
+        const isDone = runData.status === "COMPLETED" || runData.status === "FAILED";
+        if (isDone) setIsRunning(false);
+        return isDone;
       };
 
       const interval = setInterval(async () => {
         const done = await poll();
         if (done) clearInterval(interval);
-      }, 1500);
+      }, 2000);
 
     } catch (err) {
       console.error(err);
-      alert("Execution failed to start");
+      setIsRunning(false);
+      alert("Run failed to start. Check if Trigger.dev is active.");
     }
   };
 
   const handlePaneClick = useCallback(() => {
-    if (leftSidebarOpen) toggleLeftSidebar();
-    if (rightSidebarOpen) toggleRightSidebar();
-  }, [leftSidebarOpen, rightSidebarOpen, toggleLeftSidebar, toggleRightSidebar]);
+    toggleLeftSidebar(true);
+    toggleRightSidebar(true);
+  }, [toggleLeftSidebar, toggleRightSidebar]);
 
   return (
     <div className="flex-1 h-full w-full relative">
@@ -162,54 +171,61 @@ export function WorkflowCanvas() {
         className="bg-[#000]"
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       >
-        <Background color="#333" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
-        <Controls className="bg-[#1a1a1a] border border-[#333] fill-gray-400 text-gray-400" showInteractive={false} />
+        <Background color="#111" gap={20} size={1} variant={BackgroundVariant.Dots} />
+        <Controls className="bg-[#111] border border-[#222] fill-gray-600" showInteractive={false} />
         
         <Panel position="top-left" className="flex gap-2">
            <button 
-             onClick={toggleLeftSidebar}
-             className="bg-[#111] border border-[#333] p-2 rounded-md hover:bg-[#222] text-gray-400 transition-colors"
-             title="Toggle History"
+             onClick={() => toggleLeftSidebar(!leftSidebarCollapsed)}
+             className="bg-[#111] border border-[#222] p-2 rounded-lg hover:bg-[#161616] text-gray-500 transition-colors"
            >
-              {leftSidebarOpen ? <PanelLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              {leftSidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
            </button>
         </Panel>
 
-        <Panel position="top-right" className="bg-[#111] border border-[#333] rounded-md p-1 px-2 shadow-lg flex gap-2 items-center">
+        <Panel position="top-right" className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-1 px-2 shadow-2xl flex gap-2 items-center cursor-pointer hover:bg-[#111] transition-colors" onClick={(e) => {
+             // Clicking the panel bar also toggles if not on inputs
+             if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+                toggleLeftSidebar(true);
+                toggleRightSidebar(true);
+             }
+        }}>
            <input 
              value={name}
              onChange={(e) => setMetadata(id, e.target.value)}
-             className="bg-transparent text-xs text-gray-200 border-none outline-none w-32 px-1 focus:ring-0"
-             placeholder="Workflow name"
+             className="bg-transparent text-[11px] font-bold text-gray-400 border-none outline-none w-32 px-1 focus:ring-0 uppercase tracking-widest"
+             placeholder="UNTITLED WORKFLOW"
+             onClick={(e) => e.stopPropagation()}
            />
-           <div className="w-[1px] bg-[#333] h-6 mx-1" />
+           <div className="w-[1px] bg-[#222] h-6 mx-1" />
            <button 
-             onClick={handleRun}
-             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5"
+             onClick={(e) => { e.stopPropagation(); handleRun(); }}
+             disabled={isRunning}
+             className={`bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] px-5 py-1.5 rounded-full font-bold transition-all flex items-center gap-2 uppercase tracking-tighter shadow-indigo-500/20 ${isRunning ? 'opacity-50 cursor-not-allowed' : 'shadow-lg'}`}
            >
-              <Play className="w-3 h-3 fill-current" /> Run
+              {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-2.5 h-2.5 fill-current" />}
+              {isRunning ? 'Executing...' : 'Run Workflow'}
            </button>
            <button 
-             onClick={handleSave}
-             className="p-1.5 hover:bg-[#222] rounded-md transition-colors text-gray-400 hover:text-green-400"
+             onClick={(e) => { e.stopPropagation(); handleSave(); }}
+             className="p-2 hover:bg-[#222] rounded-lg transition-colors text-gray-500 hover:text-green-500"
              title="Save Workflow"
            >
               <Save className="w-4 h-4" />
            </button>
            <button
-             onClick={exportWorkflow}
-             className="p-1.5 hover:bg-[#222] rounded-md transition-colors text-gray-400"
+             onClick={(e) => { e.stopPropagation(); exportWorkflow(); }}
+             className="p-2 hover:bg-[#222] rounded-lg transition-colors text-gray-500"
              title="Export JSON"
            >
               <Download className="w-4 h-4" />
            </button>
-           <div className="w-[1px] bg-[#333] h-6 mx-1" />
+           <div className="w-[1px] bg-[#222] h-6 mx-1" />
            <button 
-             onClick={toggleRightSidebar}
-             className="bg-[#111] border border-[#333] p-1.5 rounded-md hover:bg-[#222] text-gray-400"
-             title="Toggle Gallery"
+             onClick={(e) => { e.stopPropagation(); toggleRightSidebar(!rightSidebarCollapsed); }}
+             className="bg-[#111] border border-[#222] p-2 rounded-lg hover:bg-[#161616] text-gray-500"
            >
-              {rightSidebarOpen ? <PanelRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {rightSidebarCollapsed ? <PanelRight className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
            </button>
         </Panel>
       </ReactFlow>

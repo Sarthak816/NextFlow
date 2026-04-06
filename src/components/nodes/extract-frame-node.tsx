@@ -56,6 +56,13 @@ export const ExtractFrameNode = memo(({ id, data, selected }: NodeProps<AppNode>
           </div>
         </div>
 
+        {data.imageUrl && (
+          <div className="mt-2 relative w-full h-24 rounded-lg bg-[#111] overflow-hidden border border-[#333]">
+             <img src={data.imageUrl as string} className="w-full h-full object-cover" />
+             <div className="absolute top-1 left-1 bg-black/60 text-[8px] text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest border border-white/20">EXTRACTED FRAME</div>
+          </div>
+        )}
+
         <Handle
           type="source"
           position={Position.Right}

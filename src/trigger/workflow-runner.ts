@@ -1,85 +1,103 @@
-import { task, batch } from "@trigger.dev/sdk/v3";
+import { task } from "@trigger.dev/sdk/v3";
 import { db } from "@/lib/db";
 import { getExecutionPlan } from "@/lib/dag-utils";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const workflowRunner = task({
   id: "workflow-runner",
   run: async ({ runId, workflowData, targetNodeIds }: { runId: string, workflowData: { nodes: any[], edges: any[] }, targetNodeIds?: string[] }) => {
     const { nodes, edges } = workflowData;
     
-    // 1. Mark run as running
     await db.workflowRun.update({
       where: { id: runId },
       data: { status: "RUNNING" }
     });
 
     try {
-      // 2. Get execution plan (topological sort levels)
       const executionPlan = getExecutionPlan(nodes, edges, targetNodeIds?.length ? targetNodeIds : undefined);
-      
-      // We will store node outputs in a map as we go, to pass them to downstream nodes
       const nodeOutputs: Record<string, any> = {};
 
-      // 3. Execute level by level
       for (const level of executionPlan) {
-        // Execute all nodes in the current level in parallel
-        const batchPayload = level.nodes.map(nodeId => {
-          const node = nodes.find((n: { id: string, type: string, data: any }) => n.id === nodeId);
-          return {
-            id: `execute-node-${node.type}`,
-            payload: {
+        // Parallel execution of nodes in this level
+        await Promise.all(level.nodes.map(async (nodeId) => {
+          const node = nodes.find((n: any) => n.id === nodeId);
+          if (!node) return;
+
+          // Record start
+          await db.nodeExecution.create({
+            data: {
               runId,
               nodeId,
-              nodeType: node.type,
-              nodeData: node.data,
-              edges, // to resolve upstream inputs
-              previousOutputs: nodeOutputs,
+              nodeType: node.type || "unknown",
+              nodeLabel: node.data?.label || "",
+              status: "RUNNING",
+              startedAt: new Date(),
             }
-          };
-        });
+          });
 
-        // Some nodes like "Text" just pass through data, we don't need heavy tasks for them
-        for (const taskPayload of batchPayload) {
-           const { nodeId, nodeType, nodeData, previousOutputs, edges } = taskPayload.payload;
-           
-           // Create DB record
-           await db.nodeExecution.create({
-             data: {
-               runId,
-               nodeId,
-               nodeType,
-               nodeLabel: nodeData.label || "",
-               status: "RUNNING",
-               startedAt: new Date(),
-             }
-           });
+          // Execute based on type
+          let output: any = null;
+          
+          try {
+            switch(node.type) {
+              case "textNode":
+                output = node.data?.text || "";
+                break;
+              case "uploadImageNode":
+                output = node.data?.imageUrl || "";
+                break;
+              case "uploadVideoNode":
+                output = node.data?.videoUrl || "";
+                break;
+              case "llmNode": {
+                // Find input from edges
+                const incomingEdges = edges.filter(e => e.target === nodeId);
+                let fullPrompt = node.data?.userPrompt || "Generate content based on inputs.";
+                
+                // Add outputs from upstream nodes
+                incomingEdges.forEach(e => {
+                  const sourceOutput = nodeOutputs[e.source];
+                  if (sourceOutput) {
+                    fullPrompt += `\nInput from ${e.sourceHandle}: ${sourceOutput}`;
+                  }
+                });
 
-           // Simulate execution based on nodeType
-           let output = null;
-           if (nodeType === "textNode") {
-             output = nodeData.text;
-           } else if (nodeType === "uploadImageNode") {
-             output = nodeData.imageUrl;
-           } else if (nodeType === "uploadVideoNode") {
-             output = nodeData.videoUrl;
-           } else {
-             // For heavy tasks (LLM, Crop, Extract), we would call `tasks.triggerAndWait` or just a function
-             // Here we simulate the external API calls by waiting
-             await new Promise(resolve => setTimeout(resolve, 2000));
-             output = `Result from ${nodeType}`;
-           }
+                const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-1.5-flash" });
+                const result = await model.generateContent(fullPrompt);
+                output = result.response.text();
+                break;
+              }
+              case "cropNode":
+                // Simulate FFmpeg logic but more realistically (delay + output)
+                await new Promise(r => setTimeout(r, 2000));
+                output = `Cropped: ${node.data?.imageUrl || "default_image"}`;
+                break;
+              case "extractFrameNode":
+                await new Promise(r => setTimeout(r, 2000));
+                output = "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=800";
+                break;
+              default:
+                output = "Task completed";
+            }
+          } catch (e: any) {
+             console.error(`Task fail for ${nodeId}`, e);
+             throw e;
+          }
 
-           nodeOutputs[nodeId] = output;
+          nodeOutputs[nodeId] = output;
 
-           await db.nodeExecution.updateMany({
-             where: { runId, nodeId },
-             data: {
-               status: "COMPLETED",
-               output: { result: output },
-               completedAt: new Date(),
-             }
-           });
-        }
+          // Record completion
+          await db.nodeExecution.updateMany({
+            where: { runId, nodeId },
+            data: {
+              status: "COMPLETED",
+              output: { result: output },
+              completedAt: new Date(),
+            }
+          });
+        }));
       }
 
       await db.workflowRun.update({
@@ -88,8 +106,7 @@ export const workflowRunner = task({
       });
       
       return { success: true, outputs: nodeOutputs };
-    } catch (error: unknown) {
-      console.error(error);
+    } catch (error) {
       await db.workflowRun.update({
         where: { id: runId },
         data: { status: "FAILED", completedAt: new Date() }

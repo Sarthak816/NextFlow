@@ -197,7 +197,17 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
           run.nodeExecutions.forEach((exec: any) => {
             const node = state.nodes.find(n => n.id === exec.nodeId);
             if (node) {
-              node.data = { ...node.data, output: exec.output };
+              const outputVal = exec.output?.result;
+              // Map based on node type
+              if (node.type === 'llmNode') {
+                node.data = { ...node.data, output: outputVal };
+              } else if (node.type === 'uploadImageNode' || node.type === 'cropNode' || node.type === 'extractFrameNode') {
+                node.data = { ...node.data, imageUrl: outputVal };
+              } else if (node.type === 'uploadVideoNode') {
+                node.data = { ...node.data, videoUrl: outputVal };
+              } else if (node.type === 'textNode') {
+                node.data = { ...node.data, text: outputVal };
+              }
             }
           });
         });

@@ -32,6 +32,7 @@ const nodeTypes = {
 
 export function WorkflowCanvas() {
   const {
+    id,
     nodes,
     edges,
     onNodesChange,
@@ -39,6 +40,7 @@ export function WorkflowCanvas() {
     onConnect,
     setExecutionStatus,
     clearExecutionStatus,
+    updateNodeData,
     exportWorkflow,
     importWorkflow,
     name,
@@ -64,13 +66,66 @@ export function WorkflowCanvas() {
   };
 
   const handleRun = async () => {
+    if (!id) {
+       await handleSave();
+    }
+    
+    const workflowId = useWorkflowStore.getState().id;
+    if (!workflowId) return alert("Please save the workflow first.");
+
     clearExecutionStatus();
     
-    // Quick mock execution simulation for UI
-    for (const node of nodes) {
-      setExecutionStatus(node.id, "RUNNING");
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate work
-      setExecutionStatus(node.id, "COMPLETED");
+    try {
+      const res = await fetch("/api/execute", {
+        method: "POST",
+        body: JSON.stringify({ workflowId }),
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!res.ok) throw new Error("Failed to trigger execution");
+      const { runId } = await res.json();
+
+      // Poll for run status
+      const poll = async () => {
+        const runRes = await fetch(`/api/workflows/runs/${runId}`);
+        const runData = await runRes.json();
+
+        // Update each node's status in the store
+        runData.nodeExecutions?.forEach((exec: any) => {
+          setExecutionStatus(exec.nodeId, exec.status);
+          
+          // If completed, update node data with the real output
+          if (exec.status === "COMPLETED") {
+             const outputVal = exec.output?.result;
+             const node = nodes.find(n => n.id === exec.nodeId);
+             if (node) {
+                // Map to correct property
+                if (node.type === 'llmNode') {
+                   updateNodeData(exec.nodeId, { output: outputVal });
+                } else if (node.type === 'uploadImageNode' || node.type === 'cropImageNode' || node.type === 'extractFrameNode') {
+                   updateNodeData(exec.nodeId, { imageUrl: outputVal });
+                } else if (node.type === 'uploadVideoNode') {
+                   updateNodeData(exec.nodeId, { videoUrl: outputVal });
+                }
+             }
+          }
+        });
+
+        if (runData.status === "COMPLETED" || runData.status === "FAILED") {
+          return true; // Stop polling
+        }
+        return false;
+      };
+
+      // Start polling every second
+      const interval = setInterval(async () => {
+        const done = await poll();
+        if (done) clearInterval(interval);
+      }, 1500);
+
+    } catch (err) {
+      console.error(err);
+      alert("Execution failed to start");
     }
   };
 

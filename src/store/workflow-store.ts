@@ -31,6 +31,8 @@ interface WorkflowState {
   redoStack: { nodes: AppNode[]; edges: Edge[] }[];
   id: string | null;
   name: string;
+  leftSidebarOpen: boolean;
+  rightSidebarOpen: boolean;
 }
 
 interface WorkflowActions {
@@ -43,12 +45,15 @@ interface WorkflowActions {
   updateNodeData: (nodeId: string, data: Partial<WorkflowNodeData>) => void;
   setExecutionStatus: (nodeId: string, status: string) => void;
   clearExecutionStatus: () => void;
+  undo: () => void;
   redo: () => void;
   saveStateToHistory: () => void;
   exportWorkflow: () => void;
   importWorkflow: (json: string) => void;
   setMetadata: (id: string | null, name: string) => void;
   loadRunResults: (runId: string) => Promise<void>;
+  toggleLeftSidebar: () => void;
+  toggleRightSidebar: () => void;
 }
 
 export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
@@ -61,13 +66,11 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
     redoStack: [],
     id: null,
     name: "New Workflow",
+    leftSidebarOpen: true,
+    rightSidebarOpen: true,
 
     onNodesChange: (changes) => {
       set((state) => {
-        const hasAddOrRemove = changes.some(c => c.type === 'add' || c.type === 'remove');
-        if (hasAddOrRemove) {
-           // We might want to save to history before removing
-        }
         state.nodes = applyNodeChanges(changes, state.nodes);
       });
     },
@@ -84,15 +87,11 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
       const targetNode = get().nodes.find(n => n.id === target);
 
       if (!sourceNode || !targetNode) return;
-
-      // Type checking validation could go here if we extract the types from the IDs or a schema mapping.
-      // For now, assume compatibility is checked at UI level or simplified here:
       
       const newEdges = addEdge({ ...connection, animated: true, className: "stroke-indigo-500" }, get().edges);
 
       if (hasCycle(get().nodes, newEdges)) {
-        console.warn("Connection would create a cycle.");
-        return; // Reject connection
+        return; 
       }
 
       get().saveStateToHistory();
@@ -132,7 +131,7 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
           nodes: JSON.parse(JSON.stringify(state.nodes)),
           edges: JSON.parse(JSON.stringify(state.edges)),
         });
-        state.redoStack = []; // Clear redo on new action
+        state.redoStack = []; 
       });
     },
     undo: () => {
@@ -198,7 +197,6 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
             const node = state.nodes.find(n => n.id === exec.nodeId);
             if (node) {
               const outputVal = exec.output?.result;
-              // Map based on node type
               if (node.type === 'llmNode') {
                 node.data = { ...node.data, output: outputVal };
               } else if (node.type === 'uploadImageNode' || node.type === 'cropNode' || node.type === 'extractFrameNode') {
@@ -214,6 +212,8 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
       } catch (err) {
         console.error("Load results failed", err);
       }
-    }
+    },
+    toggleLeftSidebar: () => set((state) => { state.leftSidebarOpen = !state.leftSidebarOpen; }),
+    toggleRightSidebar: () => set((state) => { state.rightSidebarOpen = !state.rightSidebarOpen; }),
   }))
 );

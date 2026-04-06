@@ -8,11 +8,20 @@ import {
   MiniMap,
   Panel,
   ConnectionMode,
-  ColorMode,
   BackgroundVariant,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore } from "@/store/workflow-store";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  PanelLeft, 
+  PanelRight, 
+  Play, 
+  Save, 
+  Download, 
+  Upload 
+} from "lucide-react";
 
 import { TextNode } from "@/components/nodes/text-node";
 import { UploadImageNode } from "@/components/nodes/upload-image-node";
@@ -45,6 +54,10 @@ export function WorkflowCanvas() {
     importWorkflow,
     name,
     setMetadata,
+    leftSidebarOpen,
+    rightSidebarOpen,
+    toggleLeftSidebar,
+    toggleRightSidebar,
   } = useWorkflowStore();
 
   const handleSave = async () => {
@@ -70,39 +83,39 @@ export function WorkflowCanvas() {
        await handleSave();
     }
     
-    const workflowId = useWorkflowStore.getState().id;
-    if (!workflowId) return alert("Please save the workflow first.");
+    // Auto-toggle to hide sidebars on run to maximize canvas
+    if (leftSidebarOpen) toggleLeftSidebar();
+    if (rightSidebarOpen) toggleRightSidebar();
+
+    const currentWorkflowId = useWorkflowStore.getState().id;
+    if (!currentWorkflowId) return alert("Please save the workflow first.");
 
     clearExecutionStatus();
     
     try {
       const res = await fetch("/api/execute", {
         method: "POST",
-        body: JSON.stringify({ workflowId }),
+        body: JSON.stringify({ workflowId: currentWorkflowId }),
         headers: { "Content-Type": "application/json" },
       });
       
       if (!res.ok) throw new Error("Failed to trigger execution");
       const { runId } = await res.json();
 
-      // Poll for run status
       const poll = async () => {
         const runRes = await fetch(`/api/workflows/runs/${runId}`);
         const runData = await runRes.json();
 
-        // Update each node's status in the store
         runData.nodeExecutions?.forEach((exec: any) => {
           setExecutionStatus(exec.nodeId, exec.status);
           
-          // If completed, update node data with the real output
           if (exec.status === "COMPLETED") {
              const outputVal = exec.output?.result;
              const node = nodes.find(n => n.id === exec.nodeId);
              if (node) {
-                // Map to correct property
                 if (node.type === 'llmNode') {
                    updateNodeData(exec.nodeId, { output: outputVal });
-                } else if (node.type === 'uploadImageNode' || node.type === 'cropImageNode' || node.type === 'extractFrameNode') {
+                } else if (node.type === 'uploadImageNode' || node.type === 'cropNode' || node.type === 'extractFrameNode') {
                    updateNodeData(exec.nodeId, { imageUrl: outputVal });
                 } else if (node.type === 'uploadVideoNode') {
                    updateNodeData(exec.nodeId, { videoUrl: outputVal });
@@ -112,12 +125,11 @@ export function WorkflowCanvas() {
         });
 
         if (runData.status === "COMPLETED" || runData.status === "FAILED") {
-          return true; // Stop polling
+          return true;
         }
         return false;
       };
 
-      // Start polling every second
       const interval = setInterval(async () => {
         const done = await poll();
         if (done) clearInterval(interval);
@@ -146,69 +158,53 @@ export function WorkflowCanvas() {
         className="bg-[#000]"
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       >
-        <Background 
-          color="#333" 
-          gap={20} 
-          size={1.5} 
-          variant={BackgroundVariant.Dots} 
-        />
-        <Controls 
-          className="bg-[#1a1a1a] border border-[#333] fill-gray-400 text-gray-400"
-          showInteractive={false}
-        />
-        <MiniMap 
-          nodeColor="#333" 
-          maskColor="rgba(0,0,0,0.7)"
-          className="bg-[#111] border border-[#222]" 
-        />
+        <Background color="#333" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
+        <Controls className="bg-[#1a1a1a] border border-[#333] fill-gray-400 text-gray-400" showInteractive={false} />
         
-        <Panel position="top-right" className="bg-[#111] border border-[#333] rounded-md p-2 shadow-lg flex gap-2 overflow-hidden">
-           <div className="flex flex-col justify-center px-2 border-r border-[#333]">
-              <input 
-                value={name}
-                onChange={(e) => setMetadata(null, e.target.value)}
-                className="bg-transparent text-xs text-gray-200 border-none outline-none w-32"
-                placeholder="Workflow name"
-              />
-           </div>
+        <Panel position="top-left" className="flex gap-2">
+           <button 
+             onClick={toggleLeftSidebar}
+             className="bg-[#111] border border-[#333] p-2 rounded-md hover:bg-[#222] text-gray-400 transition-colors"
+           >
+              {leftSidebarOpen ? <PanelLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+           </button>
+        </Panel>
+
+        <Panel position="top-right" className="bg-[#111] border border-[#333] rounded-md p-1 px-2 shadow-lg flex gap-2 items-center">
+           <input 
+             value={name}
+             onChange={(e) => setMetadata(id, e.target.value)}
+             className="bg-transparent text-xs text-gray-200 border-none outline-none w-32 px-1 focus:ring-0"
+             placeholder="Workflow name"
+           />
+           <div className="w-[1px] bg-[#333] h-6 mx-1" />
            <button 
              onClick={handleRun}
-             className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-1.5 rounded-full font-medium transition-colors"
+             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5"
            >
-              Run Workflow
+              <Play className="w-3 h-3 fill-current" /> Run
            </button>
            <button 
              onClick={handleSave}
-             className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1.5 rounded-full font-medium transition-colors"
+             className="p-1.5 hover:bg-[#222] rounded-md transition-colors text-gray-400 hover:text-green-400"
+             title="Save Workflow"
            >
-              Save
+              <Save className="w-4 h-4" />
            </button>
-           <div className="w-[1px] bg-[#333] mx-1 h-8 self-center" />
            <button
              onClick={exportWorkflow}
-             className="bg-[#222] hover:bg-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-md transition-colors"
+             className="p-1.5 hover:bg-[#222] rounded-md transition-colors text-gray-400"
+             title="Export JSON"
            >
-             Export JSON
+              <Download className="w-4 h-4" />
            </button>
-           <label className="bg-[#222] hover:bg-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-md transition-colors cursor-pointer inline-block">
-             Import JSON
-             <input
-               type="file"
-               className="hidden"
-               accept=".json"
-               onChange={(e) => {
-                 const file = e.target.files?.[0];
-                 if (file) {
-                   const reader = new FileReader();
-                   reader.onload = (re) => {
-                     const json = re.target?.result as string;
-                     importWorkflow(json);
-                   };
-                   reader.readAsText(file);
-                 }
-               }}
-             />
-           </label>
+           <div className="w-[1px] bg-[#333] h-6 mx-1" />
+           <button 
+             onClick={toggleRightSidebar}
+             className="bg-[#111] border border-[#333] p-1.5 rounded-md hover:bg-[#222] text-gray-400"
+           >
+              {rightSidebarOpen ? <PanelRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+           </button>
         </Panel>
       </ReactFlow>
     </div>

@@ -20,7 +20,8 @@ import {
   Play, 
   Save, 
   Download, 
-  Loader2 
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
 import { TextNode } from "@/components/nodes/text-node";
@@ -61,6 +62,7 @@ export function WorkflowCanvas() {
   } = useWorkflowStore();
 
   const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
     try {
@@ -74,17 +76,19 @@ export function WorkflowCanvas() {
         setMetadata(data.id, data.name);
         return data.id;
       }
-    } catch (e) {
+      throw new Error(`Save failed: ${response.statusText}`);
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to save workflow");
+      setError(`Save error: ${e.message}`);
+      return null;
     }
-    return null;
   };
 
   const handleRun = async () => {
     if (isRunning) return;
+    setError(null);
     
-    let currentId = useWorkflowStore.getState().id;
+    let currentId = id;
     if (!currentId) {
        currentId = await handleSave();
        if (!currentId) return; 
@@ -105,35 +109,47 @@ export function WorkflowCanvas() {
         headers: { "Content-Type": "application/json" },
       });
       
-      if (!res.ok) throw new Error("Failed to trigger execution");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to trigger task");
+      }
+      
       const { runId } = await res.json();
 
       const poll = async () => {
-        const runRes = await fetch(`/api/workflows/runs/${runId}`);
-        if (!runRes.ok) return false;
-        const runData = await runRes.json();
+        try {
+          const runRes = await fetch(`/api/workflows/runs/${runId}`);
+          if (!runRes.ok) return false;
+          const runData = await runRes.json();
 
-        runData.nodeExecutions?.forEach((exec: any) => {
-          setExecutionStatus(exec.nodeId, exec.status);
-          
-          if (exec.status === "COMPLETED") {
-             const outputVal = exec.output?.result;
-             const node = nodes.find(n => n.id === exec.nodeId);
-             if (node) {
-                if (node.type === 'llmNode') {
-                   updateNodeData(exec.nodeId, { output: outputVal });
-                } else if (node.type === 'uploadImageNode' || node.type === 'cropNode' || node.type === 'extractFrameNode') {
-                   updateNodeData(exec.nodeId, { imageUrl: outputVal });
-                } else if (node.type === 'uploadVideoNode') {
-                   updateNodeData(exec.nodeId, { videoUrl: outputVal });
-                }
-             }
+          runData.nodeExecutions?.forEach((exec: any) => {
+            setExecutionStatus(exec.nodeId, exec.status);
+            
+            if (exec.status === "COMPLETED") {
+               const outputVal = exec.output?.result;
+               const node = nodes.find(n => n.id === exec.nodeId);
+               if (node) {
+                  if (node.type === 'llmNode') {
+                     updateNodeData(exec.nodeId, { output: outputVal });
+                  } else if (node.type === 'uploadImageNode' || node.type === 'cropNode' || node.type === 'extractFrameNode') {
+                     updateNodeData(exec.nodeId, { imageUrl: outputVal });
+                  } else if (node.type === 'uploadVideoNode') {
+                     updateNodeData(exec.nodeId, { videoUrl: outputVal });
+                  }
+               }
+            }
+          });
+
+          const isDone = runData.status === "COMPLETED" || runData.status === "FAILED";
+          if (isDone) {
+            setIsRunning(false);
+            if (runData.status === "FAILED") setError("Workflow run failed.");
           }
-        });
-
-        const isDone = runData.status === "COMPLETED" || runData.status === "FAILED";
-        if (isDone) setIsRunning(false);
-        return isDone;
+          return isDone;
+        } catch (e) {
+          console.error("Poll error", e);
+          return false;
+        }
       };
 
       const interval = setInterval(async () => {
@@ -141,10 +157,10 @@ export function WorkflowCanvas() {
         if (done) clearInterval(interval);
       }, 2000);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       setIsRunning(false);
-      alert("Run failed to start. Check if Trigger.dev is active.");
+      setError(`Run error: ${err.message}`);
     }
   };
 
@@ -154,7 +170,7 @@ export function WorkflowCanvas() {
   }, [toggleLeftSidebar, toggleRightSidebar]);
 
   return (
-    <div className="flex-1 h-full w-full relative">
+    <div className="flex-1 h-full w-full relative overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -166,66 +182,74 @@ export function WorkflowCanvas() {
         fitView
         colorMode="dark"
         connectionMode={ConnectionMode.Loose}
-        minZoom={0.1}
-        maxZoom={2}
-        className="bg-[#000]"
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        className="bg-black"
       >
         <Background color="#111" gap={20} size={1} variant={BackgroundVariant.Dots} />
-        <Controls className="bg-[#111] border border-[#222] fill-gray-600" showInteractive={false} />
         
         <Panel position="top-left" className="flex gap-2">
            <button 
              onClick={() => toggleLeftSidebar(!leftSidebarCollapsed)}
-             className="bg-[#111] border border-[#222] p-2 rounded-lg hover:bg-[#161616] text-gray-500 transition-colors"
+             className="bg-[#111] border border-[#222] p-2.5 rounded-xl hover:bg-[#161616] text-gray-400 transition-all shadow-lg"
            >
-              {leftSidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              {leftSidebarCollapsed ? <PanelLeft className="w-5 h-5 text-indigo-500" /> : <ChevronLeft className="w-5 h-5" />}
            </button>
         </Panel>
 
-        <Panel position="top-right" className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-1 px-2 shadow-2xl flex gap-2 items-center cursor-pointer hover:bg-[#111] transition-colors" onClick={(e) => {
-             // Clicking the panel bar also toggles if not on inputs
+        <Panel position="top-right" className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-1.5 px-3 shadow-2xl flex gap-3 items-center backdrop-blur-md" onClick={(e) => {
              if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
-                toggleLeftSidebar(true);
-                toggleRightSidebar(true);
+                handlePaneClick();
              }
         }}>
-           <input 
-             value={name}
-             onChange={(e) => setMetadata(id, e.target.value)}
-             className="bg-transparent text-[11px] font-bold text-gray-400 border-none outline-none w-32 px-1 focus:ring-0 uppercase tracking-widest"
-             placeholder="UNTITLED WORKFLOW"
-             onClick={(e) => e.stopPropagation()}
-           />
-           <div className="w-[1px] bg-[#222] h-6 mx-1" />
+           <div className="flex flex-col">
+              <input 
+                value={name}
+                onChange={(e) => setMetadata(id, e.target.value)}
+                className="bg-transparent text-[10px] font-black text-gray-500 border-none outline-none w-32 px-1 focus:ring-0 uppercase tracking-widest placeholder:text-gray-800"
+                placeholder="UNTITLED"
+                onClick={(e) => e.stopPropagation()}
+              />
+              {error && (
+                <div className="flex items-center gap-1 text-[8px] text-red-500 font-bold ml-1 uppercase">
+                   <AlertCircle className="w-2 h-2" /> {error.slice(0, 20)}...
+                </div>
+              )}
+           </div>
+           
+           <div className="w-[1px] bg-[#1a1a1a] h-8 mx-1" />
+           
            <button 
              onClick={(e) => { e.stopPropagation(); handleRun(); }}
              disabled={isRunning}
-             className={`bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] px-5 py-1.5 rounded-full font-bold transition-all flex items-center gap-2 uppercase tracking-tighter shadow-indigo-500/20 ${isRunning ? 'opacity-50 cursor-not-allowed' : 'shadow-lg'}`}
+             className={`bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] px-6 py-2 rounded-full font-black transition-all flex items-center gap-2.5 uppercase tracking-wide ${isRunning ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)]'}`}
            >
-              {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-2.5 h-2.5 fill-current" />}
-              {isRunning ? 'Executing...' : 'Run Workflow'}
+              {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-2.5 h-2.5 fill-current" />}
+              {isRunning ? 'RUNNING' : 'RUN'}
            </button>
-           <button 
-             onClick={(e) => { e.stopPropagation(); handleSave(); }}
-             className="p-2 hover:bg-[#222] rounded-lg transition-colors text-gray-500 hover:text-green-500"
-             title="Save Workflow"
-           >
-              <Save className="w-4 h-4" />
-           </button>
-           <button
-             onClick={(e) => { e.stopPropagation(); exportWorkflow(); }}
-             className="p-2 hover:bg-[#222] rounded-lg transition-colors text-gray-500"
-             title="Export JSON"
-           >
-              <Download className="w-4 h-4" />
-           </button>
-           <div className="w-[1px] bg-[#222] h-6 mx-1" />
+           
+           <div className="flex items-center gap-1">
+             <button 
+               onClick={(e) => { e.stopPropagation(); handleSave(); }}
+               className="p-2.5 hover:bg-[#1a1a1a] rounded-xl transition-all text-gray-500 hover:text-green-500"
+               title="Save"
+             >
+                <Save className="w-4.5 h-4.5" />
+             </button>
+             <button
+               onClick={(e) => { e.stopPropagation(); exportWorkflow(); }}
+               className="p-2.5 hover:bg-[#1a1a1a] rounded-xl transition-all text-gray-500 hover:text-indigo-400"
+               title="Export"
+             >
+                <Download className="w-4.5 h-4.5" />
+             </button>
+           </div>
+
+           <div className="w-[1px] bg-[#1a1a1a] h-8 mx-1" />
+           
            <button 
              onClick={(e) => { e.stopPropagation(); toggleRightSidebar(!rightSidebarCollapsed); }}
-             className="bg-[#111] border border-[#222] p-2 rounded-lg hover:bg-[#161616] text-gray-500"
+             className="bg-[#111] border border-[#222] p-2.5 rounded-xl hover:bg-[#161616] text-gray-400 transition-all shadow-lg"
            >
-              {rightSidebarCollapsed ? <PanelRight className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+              {rightSidebarCollapsed ? <PanelRight className="w-5 h-5 text-indigo-500" /> : <ChevronRight className="w-5 h-5" />}
            </button>
         </Panel>
       </ReactFlow>

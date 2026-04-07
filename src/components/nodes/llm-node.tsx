@@ -63,8 +63,8 @@ export const LLMNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
                value={data.model || "gemini-2.0-flash"}
                onChange={(e) => updateNodeData(id, { model: e.target.value })}
              >
-               <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast)</option>
-               <option value="gemini-2.5-pro-preview-03-25">Gemini 2.5 Pro (Best)</option>
+               <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+               <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
              </select>
              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
           </div>

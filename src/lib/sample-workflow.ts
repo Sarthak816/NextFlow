@@ -54,7 +54,7 @@ export const SAMPLE_NODES: AppNode[] = [
     id: "llm-node-2",
     type: "llmNode",
     position: { x: 1200, y: 500 },
-    data: { label: "Final Marketing Post", model: "gemini-2.5-pro-preview-03-25" },
+    data: { label: "Final Marketing Post", model: "gemini-2.0-flash" },
   }
 ];
 

@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI tool config (never commit these)
+.claude/
+.cursor/
+.windsurf/
+.sfdx/
+.gemini/
+.copilot/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+CURSOR.md
+
+# build / debug logs
+*.log
+build*.log
+errors.txt
+lint-results.txt

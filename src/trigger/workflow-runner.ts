@@ -64,7 +64,7 @@ export const workflowRunner = task({
                   }
                 });
 
-                const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-1.5-flash" });
+                const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-2.0-flash" });
                 const result = await model.generateContent(fullPrompt);
                 output = result.response.text();
                 break;

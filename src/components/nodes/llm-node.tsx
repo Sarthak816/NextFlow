@@ -60,11 +60,11 @@ export const LLMNode = memo(({ id, data, selected }: NodeProps<AppNode>) => {
           <div className="relative">
              <select 
                className="w-full bg-[#111] text-gray-200 border border-[#333] rounded-md pl-3 pr-8 py-2 text-sm appearance-none focus:outline-none focus:border-purple-500 transition-colors"
-               value={data.model || "gemini-1.5-flash"}
+               value={data.model || "gemini-2.0-flash"}
                onChange={(e) => updateNodeData(id, { model: e.target.value })}
              >
-               <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-               <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+               <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast)</option>
+               <option value="gemini-2.5-pro-preview-03-25">Gemini 2.5 Pro (Best)</option>
              </select>
              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
           </div>

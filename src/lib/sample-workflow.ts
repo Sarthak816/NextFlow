@@ -30,7 +30,7 @@ export const SAMPLE_NODES: AppNode[] = [
     id: "llm-node-1",
     type: "llmNode",
     position: { x: 800, y: 350 },
-    data: { label: "Generate Description", model: "gemini-1.5-pro", output: "Experience pure audio bliss with our new Wireless Bluetooth Headphones..." },
+    data: { label: "Generate Description", model: "gemini-2.0-flash" },
   },
   {
     id: "upload-video-1",
@@ -54,7 +54,7 @@ export const SAMPLE_NODES: AppNode[] = [
     id: "llm-node-2",
     type: "llmNode",
     position: { x: 1200, y: 500 },
-    data: { label: "Final Marketing Post", model: "gemini-1.5-flash", output: "Level up your audio game! 🎧 Our new Wireless Bluetooth Headphones feature noise cancellation and a 30-hour battery. Perfect for on-the-go! #AudioTech #WirelessAudio" },
+    data: { label: "Final Marketing Post", model: "gemini-2.5-pro-preview-03-25" },
   }
 ];
 

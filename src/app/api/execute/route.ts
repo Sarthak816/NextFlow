@@ -57,7 +57,7 @@ async function executeWorkflowInline(
                 prompt += `\n\nInput (${e.sourceHandle || "data"}): ${src}`;
               }
             });
-            const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-2.0-flash" });
             const result = await model.generateContent(prompt);
             output = result.response.text();
             break;

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.8",
+    "@google/genai": "^1.48.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.14.0",
     "@trigger.dev/react-hooks": "4.4.3",

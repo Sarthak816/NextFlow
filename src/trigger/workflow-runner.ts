@@ -1,9 +1,9 @@
 import { task } from "@trigger.dev/sdk/v3";
 import { db } from "@/lib/db";
 import { getExecutionPlan } from "@/lib/dag-utils";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export const workflowRunner = task({
   id: "workflow-runner",
@@ -64,9 +64,12 @@ export const workflowRunner = task({
                   }
                 });
 
-                const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-2.0-flash" });
-                const result = await model.generateContent(fullPrompt);
-                output = result.response.text();
+                const modelName = node.data?.model || "gemini-2.0-flash";
+                const response = await ai.models.generateContent({
+                  model: modelName,
+                  contents: fullPrompt,
+                });
+                output = response.text ?? "No response.";
                 break;
               }
               case "cropNode":

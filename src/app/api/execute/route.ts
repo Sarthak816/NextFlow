@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { getExecutionPlan } from "@/lib/dag-utils";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 const ExecuteSchema = z.object({
   workflowId: z.string(),
@@ -27,7 +27,6 @@ async function executeWorkflowInline(
       const node = nodes.find((n: any) => n.id === nodeId);
       if (!node) return;
 
-      // Mark as RUNNING
       await db.nodeExecution.create({
         data: { runId, nodeId, nodeType: node.type || "unknown", nodeLabel: node.data?.label || "", status: "RUNNING", startedAt: new Date() },
       });
@@ -49,6 +48,9 @@ async function executeWorkflowInline(
             break;
 
           case "llmNode": {
+            if (!process.env.GEMINI_API_KEY) {
+              throw new Error("GEMINI_API_KEY is not set in environment variables.");
+            }
             const incomingEdges = edges.filter((e: any) => e.target === nodeId);
             let prompt = node.data?.userPrompt || "Generate creative content based on the workflow inputs.";
             incomingEdges.forEach((e: any) => {
@@ -57,9 +59,12 @@ async function executeWorkflowInline(
                 prompt += `\n\nInput (${e.sourceHandle || "data"}): ${src}`;
               }
             });
-            const model = genAI.getGenerativeModel({ model: node.data?.model || "gemini-2.0-flash" });
-            const result = await model.generateContent(prompt);
-            output = result.response.text();
+            const modelName = node.data?.model || "gemini-2.0-flash";
+            const response = await ai.models.generateContent({
+              model: modelName,
+              contents: prompt,
+            });
+            output = response.text ?? "No response.";
             break;
           }
 
